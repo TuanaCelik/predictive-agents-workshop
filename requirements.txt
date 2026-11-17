@@ -1,0 +1,10 @@
+# pip alternative to `uv sync` (keep in sync with pyproject.toml)
+pandas>=2.0
+scikit-learn>=1.4
+tabpfn-client>=0.9
+anthropic>=0.40
+typesafe-sdk>=0.7
+python-dotenv>=1.0
+jupyter>=1.0
+fastapi>=0.110
+uvicorn>=0.29

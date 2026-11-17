@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Predictive agent</title>
+<link rel="icon" href="/static/img/tabby.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Prior Labs colour and spacing tokens (from PRIOR DESIGN). Type uses the design system's fallback faces
+   (Inter and a mono), loaded from Google Fonts, so nobody needs the licensed brand font installed. */
+
+:root {
+  --prior-blue: #101075; --prior-white: #f8f8f9; --prior-black: #0c0c0c; --prior-plum: #b6698d;
+  --prior-purple: #3f2670; --prior-gold: #ffd400; --prior-grey: #596773; --prior-lilac: #f4f4fa;
+  --pure-white: #ffffff; --blue-04: #f1f1f7; --blue-08: #e7e7f1; --blue-16: #cfcfe3; --blue-40: #9c9cc3; --blue-70: #4c4c97;
+  --surface-page: var(--prior-white); --surface-raised: var(--pure-white); --surface-sunken: var(--blue-04);
+  --text-title: var(--prior-blue); --text-body: var(--prior-black); --text-muted: var(--prior-grey);
+  --line-hairline: var(--blue-16); --line-rule: var(--prior-black); --line-brand: var(--prior-blue);
+  --action-fill: var(--prior-blue); --action-fill-hover: var(--prior-purple); --action-text: var(--prior-white);
+  --focus-ring: var(--prior-gold);
+  --radius-control: 8px; --radius-panel: 12px; --radius-input: 14px; --radius-card: 8px;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-semimono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --ease: cubic-bezier(.2,0,0,1);
+  --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-8: 48px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--surface-page); color: var(--text-body);
+  font-family: var(--font-semimono); font-size: 14px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased; min-height: 100vh;
+}
+h1, h2, h3 { font-family: var(--font-sans); font-weight: 600; color: var(--text-title); margin: 0; letter-spacing: -0.02em; }
+a { color: var(--prior-blue); }
+button, input, select { font: inherit; }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.page { max-width: 1240px; margin: 0 auto; padding: 0 var(--space-5) var(--space-8); }
+
+/* top bar */
+.top { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-5) 0; border-bottom: 1px solid var(--line-hairline); }
+.top img.mark { height: 18px; }
+.top .title { font-family: var(--font-sans); font-size: 15px; font-weight: 500; color: var(--text-muted); }
+.top .title b { color: var(--text-title); font-weight: 600; }
+.top .spacer { flex: 1; }
+.status { display: flex; gap: var(--space-3); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.status span::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--blue-16); margin-right: 6px; vertical-align: 1px; }
+.status span.on::before { background: var(--prior-blue); }
+.status span.off { opacity: .55; }
+
+/* ask bar */
+.hero { padding: var(--space-6) 0 var(--space-4); display: grid; grid-template-columns: 1fr auto; gap: var(--space-5); align-items: end; }
+.hero h1 { font-size: 30px; font-weight: 500; line-height: 1.2; }
+.hero p { margin: 8px 0 0; color: var(--text-muted); max-width: 64ch; }
+.routerpick { display: grid; gap: 6px; }
+.routerpick label { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.routerpick select { height: 40px; padding: 0 36px 0 12px; border: 1px solid var(--line-rule); border-radius: var(--radius-control); background: transparent; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%230c0c0c' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+
+.askbar { display: flex; gap: var(--space-3); }
+.askbar input { flex: 1; height: 52px; padding: 0 18px; border: 1px solid var(--line-rule); border-radius: var(--radius-input); background: var(--surface-raised); font-size: 15px; }
+.askbar input::placeholder { color: var(--blue-40); }
+.askbar button { height: 52px; padding: 0 32px; border-radius: var(--radius-control); border: 1px solid var(--action-fill); background: var(--action-fill); color: var(--action-text); cursor: pointer; transition: background .14s var(--ease); white-space: nowrap; }
+.askbar button:hover { background: var(--action-fill-hover); border-color: var(--action-fill-hover); }
+.askbar button:disabled { opacity: .35; cursor: not-allowed; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: var(--space-3); }
+.chip { height: 28px; padding: 0 12px; border: 1px solid var(--line-hairline); background: transparent; border-radius: 999px; font-size: 12px; cursor: pointer; color: var(--text-body); transition: all .14s var(--ease); }
+.chip:hover { border-color: var(--line-brand); color: var(--prior-blue); }
+
+/* pipeline stage */
+.stage { position: relative; margin-top: var(--space-6); padding: 72px var(--space-5) var(--space-5); border: 1px solid var(--line-hairline); border-radius: var(--radius-panel); background: var(--surface-raised); overflow: hidden; }
+.stage .eyebrow { position: absolute; top: 16px; left: 24px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.stage .legend { position: absolute; top: 16px; right: 24px; font-size: 11px; color: var(--text-muted); }
+.flow { display: grid; grid-template-columns: 1fr 1.25fr 1.35fr 1fr; gap: 56px; align-items: center; position: relative; z-index: 2; }
+.col { display: grid; gap: 18px; }
+.node { position: relative; border: 1px solid var(--line-hairline); border-radius: var(--radius-card); background: var(--surface-raised); padding: 14px 16px; min-height: 86px; transition: border-color .22s var(--ease), box-shadow .22s var(--ease), background .22s var(--ease), opacity .22s var(--ease); }
+.node .k { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+.node .t { font-family: var(--font-sans); font-size: 16px; font-weight: 500; color: var(--text-title); }
+.node .d { font-size: 12px; color: var(--text-muted); margin-top: 4px; min-height: 17px; }
+.node.active { border-color: var(--line-brand); box-shadow: 0 0 0 3px var(--blue-08); }
+.node.done { border-color: var(--line-brand); }
+.node.dim { opacity: .38; }
+.node.busy::after { content: ""; position: absolute; inset: 0; border-radius: inherit; border: 1px solid var(--prior-blue); animation: pulse 1.2s ease-out infinite; pointer-events: none; }
+@keyframes pulse { 0% { opacity: .7; transform: scale(1); } 100% { opacity: 0; transform: scale(1.06); } }
+.bars { display: grid; gap: 5px; margin-top: 8px; }
+.bar { display: grid; grid-template-columns: 64px 1fr 36px; gap: 8px; align-items: center; font-size: 11px; }
+.bar .track { height: 6px; background: var(--blue-08); border-radius: 3px; overflow: hidden; }
+.bar .fill { height: 100%; width: 0; background: var(--blue-40); border-radius: 3px; transition: width .5s var(--ease); }
+.bar.win .fill { background: var(--prior-blue); }
+.bar .v { text-align: right; color: var(--text-muted); }
+.bar.win .v { color: var(--prior-blue); }
+.node .who { position: absolute; top: 12px; right: 12px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border: 1px solid var(--line-hairline); color: var(--text-muted); }
+.node.active .who, .node.done .who { border-color: var(--line-brand); color: var(--prior-blue); }
+
+svg.wires { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+svg.wires path { fill: none; stroke: var(--blue-16); stroke-width: 1.5; transition: stroke .22s var(--ease); }
+svg.wires path.on { stroke: var(--prior-blue); stroke-dasharray: 6 5; animation: march 1s linear infinite; }
+svg.wires path.lit { stroke: var(--prior-blue); }
+@keyframes march { to { stroke-dashoffset: -11; } }
+
+/* Tabby */
+.tabby { position: absolute; z-index: 3; width: 56px; left: 0; top: 0; transition: left .7s var(--ease), top .7s var(--ease); pointer-events: none; image-rendering: pixelated; }
+.tabby img { width: 100%; display: block; }
+.tabby.walk img { animation: bob .5s ease-in-out infinite; }
+@keyframes bob { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
+.tabby .say { position: absolute; left: 60px; bottom: 38px; white-space: nowrap; background: var(--pure-white); border: 1px solid var(--line-rule); border-radius: 8px 8px 8px 2px; padding: 5px 9px; font-size: 11px; color: var(--text-body); opacity: 0; transition: opacity .2s; }
+.tabby .say.show { opacity: 1; }
+
+/* answer + trace */
+.below { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--space-5); margin-top: var(--space-5); }
+.panel { border: 1px solid var(--line-hairline); border-radius: var(--radius-panel); background: var(--surface-raised); padding: var(--space-5); min-height: 220px; }
+.panel h2 { font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-4); font-family: var(--font-semimono); }
+.answer { font-family: var(--font-sans); font-size: 15px; line-height: 1.55; }
+.answer p { margin: 0 0 10px; }
+.answer ul, .answer ol { margin: 0 0 10px; padding-left: 20px; }
+.answer code { font-family: var(--font-semimono); font-size: 13px; background: var(--surface-sunken); padding: 1px 5px; border-radius: 4px; }
+.answer table { border-collapse: collapse; width: 100%; font-family: var(--font-semimono); font-size: 12.5px; margin: 6px 0 12px; }
+.answer th, .answer td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line-hairline); }
+.answer th { font-weight: 500; color: var(--text-muted); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.answer .empty { color: var(--blue-40); }
+.trace { display: grid; gap: 10px; font-size: 12px; }
+.ev { display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: start; }
+.ev .ts { color: var(--blue-40); font-variant-numeric: tabular-nums; }
+.ev .k { color: var(--prior-blue); }
+.ev pre { margin: 4px 0 0; white-space: pre-wrap; word-break: break-word; color: var(--text-muted); font-size: 11px; max-height: 160px; overflow: auto; background: var(--surface-sunken); padding: 8px; border-radius: 6px; }
+.ev.err .k { color: var(--prior-plum); }
+
+@media (max-width: 900px) {
+  .hero, .below { grid-template-columns: 1fr; }
+  .flow { grid-template-columns: 1fr; gap: 18px; }
+  .tabby, svg.wires { display: none; }
+  .stage { padding-top: 56px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <img class="mark" src="/static/img/prior-wordmark-blue.svg" alt="Prior Labs">
+    <span class="title"><b>Predictive agent</b> · telco churn</span>
+    <span class="spacer"></span>
+    <div class="status" id="status">
+      <span id="st-claude" class="off">Claude</span>
+      <span id="st-jev" class="off">Jev</span>
+      <span id="st-tabpfn" class="off">TabPFN</span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1>Ask the agent about your customers.</h1>
+      <p>A decision model sorts the question. Facts come straight from the table. Predictions are handed to TabPFN. Claude does the talking.</p>
+    </div>
+    <div class="routerpick">
+      <label for="router">Router</label>
+      <select id="router">
+        <option value="auto">Auto (Jev if key is set)</option>
+        <option value="jev">Jev</option>
+        <option value="claude">Claude</option>
+      </select>
+    </div>
+  </section>
+
+  <form class="askbar" id="form">
+    <input id="q" placeholder="e.g. Which of our current customers are most likely to churn?" autocomplete="off">
+    <button id="go" type="submit">Ask</button>
+  </form>
+  <div class="chips" id="chips"></div>
+
+  <section class="stage" id="stage">
+    <span class="eyebrow">Workflow</span>
+    <span class="legend" id="legend">Idle</span>
+    <svg class="wires" id="wires"></svg>
+    <div class="tabby" id="tabby"><img src="/static/img/tabby.png" alt="Tabby"><span class="say" id="say"></span></div>
+
+    <div class="flow">
+      <div class="col">
+        <div class="node" id="n-q"><div class="k">01 · Input</div><div class="t">Question</div><div class="d" id="d-q">Waiting for one</div></div>
+      </div>
+      <div class="col">
+        <div class="node" id="n-r">
+          <span class="who" id="who-r">router</span>
+          <div class="k">02 · Decide</div><div class="t">Prediction or lookup?</div>
+          <div class="bars">
+            <div class="bar" id="b-prediction"><span>prediction</span><div class="track"><div class="fill"></div></div><span class="v">–</span></div>
+            <div class="bar" id="b-lookup"><span>lookup</span><div class="track"><div class="fill"></div></div><span class="v">–</span></div>
+            <div class="bar" id="b-other"><span>other</span><div class="track"><div class="fill"></div></div><span class="v">–</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="node" id="n-p"><span class="who">TabPFN</span><div class="k">03a · Predict</div><div class="t">Hand off to TabPFN</div><div class="d" id="d-p">Fit on 5,634 labeled customers, score the rest</div></div>
+        <div class="node" id="n-l"><span class="who">pandas</span><div class="k">03b · Look up</div><div class="t">Query the table</div><div class="d" id="d-l">Claude writes the pandas, it runs locally</div></div>
+        <div class="node" id="n-o"><span class="who">none</span><div class="k">03c · Neither</div><div class="t">Just answer</div><div class="d" id="d-o">No data work needed</div></div>
+      </div>
+      <div class="col">
+        <div class="node" id="n-a"><span class="who">Claude</span><div class="k">04 · Explain</div><div class="t">Answer</div><div class="d" id="d-a">In the user's terms, with the numbers</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="below">
+    <div class="panel"><h2>Answer</h2><div class="answer" id="answer"><span class="empty">Nothing yet.</span></div></div>
+    <div class="panel"><h2>Trace</h2><div class="trace" id="trace"></div></div>
+  </section>
+</div>
+
+<script>
+const EXAMPLES = [
+  "How many customers do we have, and what share of them churned?",
+  "Which of our current customers are most likely to churn? Top 10.",
+  "What's the average monthly charge for customers who churned vs. those who didn't?",
+  "Is this customer likely to churn? Female,0,Yes,Yes,1,Yes,Yes,'Fiber optic',Yes,No,Yes,No,Yes,Yes,Month-to-month,Yes,'Electronic check',102.45,102.45",
+  "Which customers will probably churn — I mean the ones who already did, how many?",
+  "How does TabPFN work?",
+];
+const $ = id => document.getElementById(id);
+const nodes = { q: $("n-q"), r: $("n-r"), p: $("n-p"), l: $("n-l"), o: $("n-o"), a: $("n-a") };
+const branchFor = { prediction: "p", lookup: "l", other: "o" };
+let t0 = 0, busy = false;
+
+// examples
+EXAMPLES.forEach(e => { const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = e.length > 58 ? e.slice(0, 56) + "…" : e; b.title = e; b.onclick = () => { $("q").value = e; $("q").focus(); }; $("chips").appendChild(b); });
+
+// status
+fetch("/config").then(r => r.json()).then(c => {
+  for (const k of ["claude", "jev", "tabpfn"]) $("st-" + k).className = c[k] ? "on" : "off";
+  if (!c.jev) $("router").querySelector('[value="jev"]').disabled = true;
+});
+
+// wires between nodes
+function center(el, side) { const s = $("stage").getBoundingClientRect(), r = el.getBoundingClientRect();
+  return { x: (side === "r" ? r.right : r.left) - s.left, y: r.top + r.height / 2 - s.top }; }
+const WIRES = [["q","r"],["r","p"],["r","l"],["r","o"],["p","a"],["l","a"],["o","a"]];
+function drawWires() {
+  const svg = $("wires"); svg.innerHTML = "";
+  for (const [a, b] of WIRES) {
+    const p1 = center(nodes[a], "r"), p2 = center(nodes[b], "l"), mx = (p1.x + p2.x) / 2;
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M${p1.x},${p1.y} C${mx},${p1.y} ${mx},${p2.y} ${p2.x},${p2.y}`);
+    path.id = `w-${a}-${b}`; svg.appendChild(path);
+  }
+}
+function wire(a, b, cls) { const w = $(`w-${a}-${b}`); if (w) w.setAttribute("class", cls); }
+window.addEventListener("resize", drawWires); drawWires();
+
+// Tabby
+function tabbyTo(key, text, walking) {
+  const s = $("stage").getBoundingClientRect(), r = nodes[key].getBoundingClientRect(), t = $("tabby");
+  t.style.left = (r.left - s.left + 10) + "px"; t.style.top = (r.top - s.top - 54) + "px";
+  t.classList.toggle("walk", !!walking);
+  const say = $("say"); if (text) { say.textContent = text; say.classList.add("show"); } else say.classList.remove("show");
+}
+setTimeout(() => tabbyTo("q", "Hi! Ask me something.", false), 50);
+
+// trace
+function trace(k, body, cls) {
+  const d = document.createElement("div"); d.className = "ev" + (cls ? " " + cls : "");
+  const ts = ((performance.now() - t0) / 1000).toFixed(1) + "s";
+  d.innerHTML = `<span class="ts">${ts}</span><div><span class="k">${k}</span>${body ? `<pre>${esc(body)}</pre>` : ""}</div>`;
+  $("trace").prepend(d);
+}
+const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+// tiny markdown: paragraphs, bullets, bold, code, pipe tables
+function md(src) {
+  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+  const lines = src.split("\n"); let out = "", i = 0;
+  while (i < lines.length) {
+    const L = lines[i];
+    if (/^\s*\|/.test(L)) { const rows = []; while (i < lines.length && /^\s*\|/.test(lines[i])) { if (!/^\s*\|[\s:\-|]+\|\s*$/.test(lines[i])) rows.push(lines[i].trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim())); i++; }
+      out += "<table>" + rows.map((r, k) => "<tr>" + r.map(c => `<${k ? "td" : "th"}>${inline(c)}</${k ? "td" : "th"}>`).join("") + "</tr>").join("") + "</table>"; continue; }
+    if (/^\s*[-*] /.test(L)) { out += "<ul>"; while (i < lines.length && /^\s*[-*] /.test(lines[i])) { out += `<li>${inline(lines[i].replace(/^\s*[-*] /, ""))}</li>`; i++; } out += "</ul>"; continue; }
+    if (/^\s*\d+\. /.test(L)) { out += "<ol>"; while (i < lines.length && /^\s*\d+\. /.test(lines[i])) { out += `<li>${inline(lines[i].replace(/^\s*\d+\. /, ""))}</li>`; i++; } out += "</ol>"; continue; }
+    if (/^#+ /.test(L)) { out += `<p><b>${inline(L.replace(/^#+ /, ""))}</b></p>`; i++; continue; }
+    if (L.trim() === "") { i++; continue; }
+    let para = []; while (i < lines.length && lines[i].trim() !== "" && !/^\s*([-*]|\d+\.) |^\s*\||^#+ /.test(lines[i])) { para.push(lines[i]); i++; }
+    out += `<p>${inline(para.join(" "))}</p>`;
+  }
+  return out;
+}
+
+function reset() {
+  for (const k in nodes) nodes[k].className = "node";
+  document.querySelectorAll("svg.wires path").forEach(p => p.setAttribute("class", ""));
+  for (const b of ["prediction", "lookup", "other"]) { const el = $("b-" + b); el.classList.remove("win"); el.querySelector(".fill").style.width = "0"; el.querySelector(".v").textContent = "–"; }
+  $("d-p").textContent = "Fit on 5,634 labeled customers, score the rest"; $("d-l").textContent = "Claude writes the pandas, it runs locally"; $("d-o").textContent = "No data work needed"; $("d-a").textContent = "In the user's terms, with the numbers";
+  $("who-r").textContent = "router"; $("trace").innerHTML = ""; $("answer").innerHTML = '<span class="empty">Working…</span>';
+}
+
+async function ask(question) {
+  if (busy) return; busy = true; $("go").disabled = true; t0 = performance.now(); reset();
+  $("d-q").textContent = question.length > 70 ? question.slice(0, 68) + "…" : question;
+  nodes.q.classList.add("done"); nodes.r.classList.add("active", "busy"); wire("q", "r", "on");
+  $("legend").textContent = "Routing"; tabbyTo("r", "Routing…", true); trace("question", question);
+  let branch = null;
+
+  const res = await fetch("/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, router: $("router").value }) });
+  const reader = res.body.getReader(), dec = new TextDecoder(); let buf = "";
+  while (true) {
+    const { value, done } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let idx; while ((idx = buf.indexOf("\n\n")) >= 0) {
+      const chunk = buf.slice(0, idx); buf = buf.slice(idx + 2);
+      const ev = /^event: (.+)$/m.exec(chunk)?.[1], data = JSON.parse(/^data: (.+)$/m.exec(chunk)?.[1] || "{}");
+      handle(ev, data);
+    }
+  }
+  busy = false; $("go").disabled = false;
+
+  function handle(ev, d) {
+    if (ev === "route") {
+      nodes.r.classList.remove("busy"); nodes.r.classList.add("done"); wire("q", "r", "lit");
+      $("who-r").textContent = d.router === "jev" ? "Jev" : "Claude";
+      for (const b of ["prediction", "lookup", "other"]) { const v = d.probabilities[b] ?? 0, el = $("b-" + b); el.querySelector(".fill").style.width = Math.round(v * 100) + "%"; el.querySelector(".v").textContent = d.probabilities[b] == null ? "–" : Math.round(v * 100) + "%"; el.classList.toggle("win", b === d.task_type); }
+      trace(`route · ${d.router}`, `${d.task_type}  (confidence ${Math.round(d.confidence * 100)}%)`);
+    } else if (ev === "tools") {
+      const set = d.set; $("legend").textContent = { prediction: "Handing off to TabPFN", lookup: "Querying the table", none: "Answering", both: "Not sure — Claude gets both tool sets" }[set];
+      if (set === "both") { branch = null; for (const k of ["p", "l"]) { nodes[k].classList.add("active"); wire("r", k, "on"); } nodes.o.classList.add("dim"); tabbyTo("r", "Hmm, could be either…", true); }
+      else { branch = { prediction: "p", lookup: "l", none: "o" }[set]; for (const k of ["p", "l", "o"]) if (k !== branch) nodes[k].classList.add("dim"); nodes[branch].classList.add("active"); wire("r", branch, "on");
+        tabbyTo(branch, { p: "Off to TabPFN!", l: "Let me check the table.", o: "I can just answer that." }[branch], true); }
+      if (set === "none") { nodes[branch].classList.add("done"); nodes.a.classList.add("active", "busy"); wire(branch, "a", "on"); tabbyTo("a", "Writing…", true); }
+      trace("tools", set === "none" ? "no tools" : set + " tools");
+    } else if (ev === "tool_start") {
+      const k = d.name === "run_pandas" ? "l" : "p"; branch = branch || k;
+      nodes[k].classList.remove("dim"); nodes[k].classList.add("active", "busy"); wire("r", k, "on");
+      if (k === "p") $("d-p").textContent = d.fits_first ? "Fitting TabPFN on 5,634 rows via the API…" : "Scoring with the cached fit…";
+      else $("d-l").textContent = "Running: " + (d.input.code || "").split("\n")[0].slice(0, 60);
+      tabbyTo(k, d.fits_first ? "Fitting on 5,634 rows…" : (k === "p" ? "Scoring…" : "Running pandas…"), true);
+      trace(`tool · ${d.name}`, JSON.stringify(d.input, null, 1).slice(0, 600));
+    } else if (ev === "tool_end") {
+      const k = d.name === "run_pandas" ? "l" : "p";
+      nodes[k].classList.remove("busy"); nodes[k].classList.add("done"); wire("r", k, "lit"); wire(k, "a", "on");
+      let note = "";
+      try { const o = JSON.parse(d.output); if (o.n_scored) note = `Scored ${o.n_scored.toLocaleString()} customers in ${o.seconds}s`; else if (o.predictions) note = `Scored ${o.predictions.length} row${o.predictions.length > 1 ? "s" : ""}`; } catch (e) { note = "Query ran"; }
+      if (d.fit_seconds) note = `Fit in ${d.fit_seconds.toFixed(1)}s · ` + note;
+      $(k === "p" ? "d-p" : "d-l").textContent = note;
+      nodes.a.classList.add("active", "busy"); tabbyTo("a", "Got it. Writing…", true);
+      trace(`result · ${d.name}`, d.output.slice(0, 900));
+    } else if (ev === "answer") {
+      nodes.a.classList.remove("busy"); nodes.a.classList.add("done");
+      document.querySelectorAll("svg.wires path.on").forEach(p => p.setAttribute("class", "lit"));
+      $("answer").innerHTML = md(d.text) || '<span class="empty">(empty)</span>'; $("d-a").textContent = "Done";
+      $("legend").textContent = "Done"; tabbyTo("a", "Done!", false); trace("answer", d.text.slice(0, 300));
+    } else if (ev === "error") {
+      document.querySelectorAll(".node.busy").forEach(n => n.classList.remove("busy"));
+      $("answer").innerHTML = `<span style="color:var(--prior-plum)">${esc(d.message)}</span>`; $("legend").textContent = "Error";
+      tabbyTo("r", "Something broke.", false); trace("error", d.message, "err");
+    }
+  }
+}
+
+$("form").addEventListener("submit", e => { e.preventDefault(); const q = $("q").value.trim(); if (q) ask(q); });
+</script>
+</body>
+</html>
